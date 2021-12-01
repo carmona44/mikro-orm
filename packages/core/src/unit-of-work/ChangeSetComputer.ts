@@ -36,10 +36,7 @@ export class ChangeSetComputer {
     }
 
     const changeSet = new ChangeSet(entity, type, this.computePayload(entity), meta);
-
-    if (changeSet.type === ChangeSetType.UPDATE) {
-      changeSet.originalEntity = entity.__helper!.__originalEntityData;
-    }
+    changeSet.originalEntity = entity.__helper!.__originalEntityData;
 
     if (this.config.get('validate')) {
       this.validator.validate<T>(changeSet.entity, changeSet.payload, meta);
@@ -145,7 +142,11 @@ export class ChangeSetComputer {
     }
 
     if (prop.owner || target.getItems(false).filter(item => !item.__helper!.__initialized).length > 0) {
-      this.collectionUpdates.add(target);
+      if (this.platform.usesPivotTable()) {
+        this.collectionUpdates.add(target);
+      } else {
+        changeSet.payload[prop.name] = target.getItems(false).map((item: AnyEntity) => item.__helper!.__identifier ?? item.__helper!.getPrimaryKey());
+      }
     } else {
       target.setDirty(false); // inverse side with only populated items, nothing to persist
     }
